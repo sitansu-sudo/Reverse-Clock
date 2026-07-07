@@ -464,4 +464,194 @@
                     return;
                 }
 
-                const days = Math.floor(distance / (1000 *
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                if(clockElement) {
+                    clockElement.innerHTML = `
+                        <div class="time-segment"><div class="time-num">${String(days).padStart(3, '0')}</div><div class="time-lbl">Days</div></div>
+                        <div class="time-segment"><div class="time-num">${String(hours).padStart(2, '0')}</div><div class="time-lbl">Hrs</div></div>
+                        <div class="time-segment"><div class="time-num">${String(minutes).padStart(2, '0')}</div><div class="time-lbl">Min</div></div>
+                        <div class="time-segment"><div class="time-num">${String(seconds).padStart(2, '0')}</div><div class="time-lbl">Sec</div></div>
+                    `;
+                }
+            });
+        }
+
+        function randomizeOnlineMetrics() {
+            document.getElementById('live-online').innerText = (1480 + (Math.floor(Math.random() * 40) - 20)).toLocaleString();
+        }
+
+        function generateLedgerLogs() {
+            const feed = document.getElementById('ledger-feed');
+            const sampleNames = ['Alpha_Rider', 'Viper99', 'Sarah_M', 'Kaelen_Chrono', 'GhostUser', 'Mirage_3', 'Rahul_V', 'Sitansu'];
+            let html = '';
+            
+            if (state.username) {
+                html += `
+                    <div class="member-row" style="background:rgba(0,242,254,0.05)">
+                        <span class="member-pos">#${state.memberNumber.toLocaleString()}</span>
+                        <span class="member-name">${state.username} (You)</span>
+                        <span class="member-time">Online</span>
+                    </div>
+                `;
+            }
+
+            for(let i=0; i < 3; i++) {
+                const mockName = sampleNames[Math.floor(Math.random()*sampleNames.length)];
+                const mockID = generateDeterministicID(mockName + i);
+                html += `
+                    <div class="member-row">
+                        <span class="member-pos">#${mockID.toLocaleString()}</span>
+                        <span class="member-name">${mockName}</span>
+                        <span class="member-time">Synced ✓</span>
+                    </div>
+                `;
+            }
+            feed.innerHTML = html;
+        }
+
+        // --- 5 ROTATING MULTI-GAMES MATRIX MODULE ---
+        function launchRandomGame() {
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            const games = [runAsteroids, runSnake, runPong, runBrickBreaker, runRunner];
+            const chosenIndex = Math.floor(Math.random() * games.length);
+            
+            // Fire target system game runtime
+            games[chosenIndex](canvas, ctx);
+        }
+
+        // GAME 1: Asteroids Shooter
+        function runAsteroids(canvas, ctx) {
+            document.getElementById('game-title').innerText = "Module 01 — Orbital Asteroid Defense";
+            document.getElementById('game-controls-tip').innerText = "Move Mouse to slide ship. Click left button to fire plasma rounds.";
+            let playerX = canvas.width / 2; let lasers = []; let targets = []; let score = 0;
+            canvas.onmousemove = (e) => playerX = e.clientX - canvas.getBoundingClientRect().left;
+            canvas.onclick = () => lasers.push({x: playerX, y: canvas.height - 25});
+            function loop() {
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle = '#00f2fe'; ctx.beginPath(); ctx.moveTo(playerX, canvas.height-25); ctx.lineTo(playerX-12, canvas.height-5); ctx.lineTo(playerX+12, canvas.height-5); ctx.fill();
+                lasers.forEach((l,i) => { l.y -= 6; ctx.fillStyle='#ff007f'; ctx.fillRect(l.x-2, l.y, 4,8); if(l.y<0) lasers.splice(i,1); });
+                if(Math.random() < 0.04) targets.push({x: Math.random()*canvas.width, y: -10, s: 1.5+Math.random()*2});
+                targets.forEach((t,ti) => {
+                    t.y += t.s; ctx.fillStyle='#8a99ad'; ctx.beginPath(); ctx.arc(t.x, t.y, 12, 0, Math.PI*2); ctx.fill();
+                    lasers.forEach((l,li) => { if(Math.hypot(l.x-t.x, l.y-t.y) < 14) { targets.splice(ti,1); lasers.splice(li,1); score+=10; } });
+                    if(t.y > canvas.height) targets.splice(ti,1);
+                });
+                ctx.fillStyle='#fff'; ctx.font='13px Orbitron'; ctx.fillText(`SCORE: ${score}`, 15, 25);
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        // GAME 2: Retro Snake
+        function runSnake(canvas, ctx) {
+            document.getElementById('game-title').innerText = "Module 02 — Data Matrix Snake Grid";
+            document.getElementById('game-controls-tip').innerText = "Click inside canvas grid area to steer Snake layout clockwise.";
+            let size = 15; let snake = [{x:60, y:60}, {x:45, y:60}]; let dx = size, dy = 0;
+            let food = {x: 120, y: 90}; let score = 0; let frameCount = 0;
+            canvas.onclick = () => { if(dx===size) { dx=0; dy=size; } else if(dy===size) { dx=-size; dy=0; } else if(dx===-size) { dx=0; dy=-size; } else { dx=size; dy=0; }};
+            function loop() {
+                frameCount++;
+                if(frameCount % 7 === 0) {
+                    let head = {x: snake[0].x + dx, y: snake[0].y + dy};
+                    if(head.x < 0) head.x = canvas.width; if(head.x > canvas.width) head.x = 0;
+                    if(head.y < 0) head.y = canvas.height; if(head.y > canvas.height) head.y = 0;
+                    snake.unshift(head);
+                    if(Math.abs(head.x - food.x) < size && Math.abs(head.y - food.y) < size) { score += 10; food = {x: Math.floor(Math.random()*(canvas.width/size))*size, y: Math.floor(Math.random()*(canvas.height/size))*size}; }
+                    else { snake.pop(); }
+                }
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle='#4facfe'; snake.forEach(s => ctx.fillRect(s.x, s.y, size-1, size-1));
+                ctx.fillStyle='#ff007f'; ctx.fillRect(food.x, food.y, size-1, size-1);
+                ctx.fillStyle='#fff'; ctx.font='13px Orbitron'; ctx.fillText(`BYTES CAPTURED: ${score}`, 15, 25);
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        // GAME 3: Cyber Pong
+        function runPong(canvas, ctx) {
+            document.getElementById('game-title').innerText = "Module 03 — Cyber Pong Neural Network";
+            document.getElementById('game-controls-tip').innerText = "Move cursor up/down inside tracking matrix to slide defensive shield.";
+            let py = canvas.height/2, ey = canvas.height/2;
+            let bx = canvas.width/2, by = canvas.height/2, bdx = 4, bdy = 3; let score = 0;
+            canvas.onmousemove = (e) => py = e.clientY - canvas.getBoundingClientRect().top - 25;
+            function loop() {
+                bx += bdx; by += bdy;
+                if(by < 0 || by > canvas.height) bdy *= -1;
+                if(ey + 25 < by) ey += 2.5; else ey -= 2.5; // Simple tracking AI
+                if(bx < 20 && by > py && by < py + 50) { bdx *= -1; bx = 20; score++; }
+                if(bx > canvas.width - 20 && by > ey && by < ey + 50) bdx *= -1;
+                if(bx < 0 || bx > canvas.width) { bx = canvas.width/2; by = canvas.height/2; bdx *= -1; }
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle='#00f2fe'; ctx.fillRect(10, py, 10, 50);
+                ctx.fillStyle='#7f00ff'; ctx.fillRect(canvas.width - 20, ey, 10, 50);
+                ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI*2); ctx.fill();
+                ctx.font='13px Orbitron'; ctx.fillText(`DEFLECTIONS: ${score}`, 15, 25);
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        // GAME 4: Brick Breaker
+        function runBrickBreaker(canvas, ctx) {
+            document.getElementById('game-title').innerText = "Module 04 — Firewalled Brick Demolition";
+            document.getElementById('game-controls-tip').innerText = "Slide mouse horizontally over arcade platform node to bounce core launcher.";
+            let px = canvas.width/2; let bx = canvas.width/2, by = canvas.height - 40, bdx = 3, bdy = -3;
+            let bricks = []; let score = 0;
+            for(let r=0; r<3; r++) { for(let c=0; c<8; c++) { bricks.push({x: c*50 + 40, y: r*20 + 40, v: 1}); } }
+            canvas.onmousemove = (e) => px = e.clientX - canvas.getBoundingClientRect().left - 35;
+            function loop() {
+                bx += bdx; by += bdy;
+                if(bx < 0 || bx > canvas.width) bdx *= -1; if(by < 0) bdy *= -1;
+                if(by > canvas.height - 25 && bx > px && bx < px + 70) { bdy = -3; by = canvas.height - 26; }
+                if(by > canvas.height) { by = canvas.height - 40; bx = canvas.width/2; bdy = -3; }
+                bricks.forEach(b => {
+                    if(b.v && bx > b.x && bx < b.x + 45 && by > b.y && by < b.y + 15) { b.v = 0; bdy *= -1; score += 10; }
+                });
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle='#00ff66'; ctx.fillRect(px, canvas.height - 15, 70, 10);
+                ctx.fillStyle='#ff007f'; ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle='#8a99ad'; bricks.forEach(b => { if(b.v) ctx.fillRect(b.x, b.y, 42, 12); });
+                ctx.fillStyle='#fff'; ctx.font='13px Orbitron'; ctx.fillText(`DESTRUCTION CORRIDOR: ${score}`, 15, 25);
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        // GAME 5: Matrix Runner
+        function runRunner(canvas, ctx) {
+            document.getElementById('game-title').innerText = "Module 05 — Chrono Grid Velocity Runner";
+            document.getElementById('game-controls-tip').innerText = "Click anywhere inside the sandbox grid zone to jump over standard obstacles.";
+            let py = canvas.height - 30, pVelocity = 0, isJumping = false;
+            let obstacles = []; let score = 0;
+            canvas.onclick = () => { if(!isJumping) { pVelocity = -10; isJumping = true; } };
+            function loop() {
+                pVelocity += 0.5; py += pVelocity;
+                if(py >= canvas.height - 30) { py = canvas.height - 30; pVelocity = 0; isJumping = false; }
+                if(Math.random() < 0.015 && obstacles.length < 2) obstacles.push({x: canvas.width, w: 15, h: 20 + Math.random()*20});
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle='#7f00ff'; ctx.fillRect(40, py, 20, 30); // Draw player block
+                ctx.fillStyle='#ff007f';
+                obstacles.forEach((o, i) => {
+                    o.x -= 4; ctx.fillRect(o.x, canvas.height - o.h, o.w, o.h);
+                    if(o.x < 60 && o.x + o.w > 40 && py + 30 > canvas.height - o.h) { score = 0; o.x = -100; } // Crash hit check reset
+                    if(o.x < -20) { obstacles.splice(i,1); score += 20; }
+                });
+                ctx.fillStyle='#fff'; ctx.font='13px Orbitron'; ctx.fillText(`SURVIVAL DISTANCE: ${score}m`, 15, 25);
+                requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
